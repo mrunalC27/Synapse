@@ -1,0 +1,70 @@
+{
+  "AI & Tech News": [
+    {
+      "title": "The Latest AI News and AI Breakthroughs",
+      "summary": "Leading Chinese tech giants and research institutes have launched a series of sophisticated AI models just in time for the Lunar New Year festivities.",
+      "link": "https://www.crescendo.ai/news/latest-ai-news-and-updates"
+    },
+    {
+      "title": "AI News: Latest News, Analysis & Events",
+      "summary": "Nokia and AWS pilot AI automation for real-time 5G network slicing \u00b7 ASML's high-NA EUV tools clear the runway for next-gen AI chips \u00b7 COBOL modernisation just",
+      "link": "https://www.artificialintelligence-news.com/"
+    },
+    {
+      "title": "AI News | Latest Headlines and Developments",
+      "summary": "Trump directs US agencies to toss Anthropic's AI as Pentagon calls startup a supply risk \u00b7 14 hours ago. OpenAI reaches deal to deploy AI models on",
+      "link": "https://www.reuters.com/technology/artificial-intelligence/"
+    }
+  ],
+  "Hackathons": [
+    {
+      "title": "New & upcoming hackathons - Devpost",
+      "summary": "This website lists upcoming hackathons including Amazon Nova AI Hackathon and Gemini Live Agent Challenge. Visit for more information.",
+      "link": "https://devpost.com/hackathons"
+    },
+    {
+      "title": "Hackathons in United States",
+      "summary": "US-based hackathons include WAV Hackathon and ElectricSEA Art+Tech Hackathon. Check the website for dates and locations.",
+      "link": "https://us.allhackathons.com/"
+    },
+    {
+      "title": "High School Hackathons in 2026 \u2013 Hack Club",
+      "summary": "Hack Club lists high school hackathons in 2026 with 109 events in 30 states and 26 countries. Find online and in-person events here.",
+      "link": "https://hackathons.hackclub.com/"
+    }
+  ],
+  "Scholarships": [
+    {
+      "title": "iD Tech Scholarship Programs",
+      "summary": "iD Tech provides scholarships for underserved and underrepresented students to attend their technology camp and experience STEM fields.",
+      "link": "https://www.idtech.com/scholarships"
+    },
+    {
+      "title": "Top 251 Computer Science Scholarships",
+      "summary": "This list includes various computer science scholarships, including the Black at Microsoft Scholarship for Black high school seniors and the Hawaii Chapter AFCEA STEM Scholarships for high school seniors and graduate students.",
+      "link": "https://scholarships360.org/scholarships/computer-science-scholarships/"
+    },
+    {
+      "title": "Applied Science & Technology Scholarships",
+      "summary": "This list includes various applied science and technology scholarships, including the Ike Foundation Scholarship, the Newland Scholarship, and the Mikkelson Foundation Scholarship.",
+      "link": "https://www.scholarships.com/financial-aid/college-scholarships/scholarship-directory/academic-major/applied-science-and-technology"
+    }
+  ],
+  "Tools & Releases": [
+    {
+      "title": "Friday Links #35: Dev Tools, AI & JS Ecosystem Updates",
+      "summary": "A weekly curated selection of developer tools, AI breakthroughs, framework updates, and notable releases shaping the modern JavaScript ecosystem.",
+      "link": "https://jsdevspace.substack.com/p/friday-links-35-dev-tools-ai-and"
+    },
+    {
+      "title": "Roadmap: Developer Tooling for Software 3.0",
+      "summary": "Developer tooling for Software 3.0, where natural language becomes the primary programming interface and AI agents evolve into developers themselves.",
+      "link": "https://www.bvp.com/atlas/roadmap-developer-tooling-for-software-3-0"
+    },
+    {
+      "title": "10 AI Developer Tools To Improve Teams\u2019 Efficiency in 2026",
+      "summary": "An overview of 10 AI developer tools that can improve teams' efficiency in 2026, including autocomplete, code reviews, and prototype spin-ups.",
+      "link": "https://www.scalablepath.com/machine-learning/ai-tools-improve-efficiency"
+    }
+  ]
+}

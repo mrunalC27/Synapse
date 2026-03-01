@@ -1,0 +1,32 @@
+**Daily Tech Briefing**
+
+**AI & Tech News**
+
+* Nvidia plans new chip to speed AI (WSJ)
+* AI News delivers the latest breakthroughs in artificial intelligence, machine learning, deep learning, brain computer interface, robotics, and other future technologies (YouTube)
+* AI News delivers the latest updates in artificial intelligence, machine learning, deep learning, enterprise AI, and emerging tech worldwide (Artificial Intelligence News)
+
+**Hackathons**
+
+* High School Hackathons in 2026 (Hack Club)
+* Amazon Nova AI Hackathon (17 days left, Feb 02 - Mar 16, 2026)
+* Gemini Live Agent Challenge (17 days left, Feb 16 - Mar 16, 2026)
+* GitLab AI Hackathon (26 days left)
+* Google Solution Challenge (₹20L prize + Google mentorship)
+* Microsoft Imagine Cup ( $100K + mentorship from Microsoft leadership)
+* Amazon AWS AI Hackathon (upcoming)
+
+**Scholarships**
+
+* iD Tech Scholarship Programs for underserved and underrepresented students ages 7-19 ( virtual tech camps, on-campus summer programs, or online teen academies)
+* Tech scholarships for high school students
+* "Tuition Solution" Scholarship for STEM Students
+* Women in STEM Empowerment Scholarship
+* Top 60 Tech Scholarships to Apply for in February 2026
+
+**Tools & Releases**
+
+* New features in Chrome DevTools (individual network request throttling, edit @font-face and @font-feature-values rules, adopted stylesheets in the Elements panel, AI innovations, performance, web platform)
+* Devbox: a developer tool that eliminates entire categories of configuration errors while making it easier to maintain and evolve your configuration over time
+* Media Bunny: a browser-based media toolkit that makes handling audio and video easy and visual
+* 10 Hidden Modern Open-Source Developer Tools for 2026 (including Devbox, Media Bunny, and others)

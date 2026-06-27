@@ -1,11 +1,41 @@
 
 import sys
 import os 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(ROOT_DIR)
 import streamlit as st
-from synapse_core.synapse_api import summaries
 from synapse_core.scout_service import run_scout
+
+# ---- Scout auto-scheduler (persists across Streamlit reruns via st.cache_resource) ----
+from apscheduler.schedulers.background import BackgroundScheduler
+import datetime as _dt
+
+def _scheduled_scout_job():
+    print(f"[Scout] running scheduled job at {_dt.datetime.now()}")
+    try:
+        run_scout()
+    except Exception as e:
+        print(f"[Scout] scheduled run failed: {e}")
+
+@st.cache_resource
+def get_scout_scheduler():
+    scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+    scheduler.add_job(
+        _scheduled_scout_job,
+        trigger="cron",
+        hour=7,
+        minute=0,
+        id="daily_scout_job",
+        replace_existing=True,
+    )
+    scheduler.start()
+    print("[Scout] scheduler started — will run daily at 07:00 IST")
+    return scheduler
+
+# Calling this on every script run is safe: st.cache_resource only executes
+# the function body once and returns the cached instance on every later call.
+_scout_scheduler = get_scout_scheduler()
+# ---- end scheduler block ----
 import streamlit.components.v1 as components
 import textwrap
 import re
@@ -43,14 +73,16 @@ from google.auth.transport.requests import Request
 from dotenv import load_dotenv
 # import os
 
-load_dotenv()
+load_dotenv(override=True)
 
 groq_api_key = os.getenv("GROQ_API_KEY")
 tavily_api_key = os.getenv("TAVILY_API_KEY")
 
 
-
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+IST = ZoneInfo("Asia/Kolkata")
 DB_PERSIST_DIRECTORY = "chroma_db_unified"
 
 #file kuthun run hoat ahe check karaych asel tr
@@ -288,33 +320,34 @@ if "messages" not in st.session_state:
 if "last_processed_file" not in st.session_state:
     st.session_state.last_processed_file = None
 
-
 # ----------------- GOOGLE AUTH HELPERS ----------------- #
+CREDENTIALS_PATH = os.path.join(ROOT_DIR, "credentials.json")
+TOKEN_PATH = os.path.join(ROOT_DIR, "token.json")
+
 def get_credentials():
     creds = None
-    if os.path.exists("token.json"):
+    if os.path.exists(TOKEN_PATH):
         try:
-            creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+            creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
         except Exception:
             creds = None
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            if not os.path.exists("credentials.json"):
-                raise FileNotFoundError("credentials.json not found.")
-            
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            if not os.path.exists(CREDENTIALS_PATH):
+                raise FileNotFoundError(f"credentials.json not found at {CREDENTIALS_PATH}.")
+
+            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_PATH, SCOPES)
             creds = flow.run_local_server(
                 port=0,
-                access_type='offline',   # 🔥 ADD THIS
-                prompt='consent'         # 🔥 ADD THIS
+                access_type='offline',
+                prompt='consent'
             )
-
-            creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as token:
+        with open(TOKEN_PATH, "w") as token:
             token.write(creds.to_json())
     return creds
+
 
 def clean_time_phrase(text: str) -> str:
     if not text:
@@ -480,15 +513,8 @@ def search_knowledge_base(query: str) -> str:
 @tool
 def get_daily_briefing():
     """Return the structured daily scout briefing."""
-    
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    FILE_PATH = os.path.join(BASE_DIR, "data", "daily_briefing.json")
 
-    if not os.path.exists(FILE_PATH):
-        return {}
-    
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    FILE_PATH = os.path.join(BASE_DIR, "data", "daily_briefing.json")
+    FILE_PATH = os.path.join(ROOT_DIR, "data", "daily_briefing.json")
 
     if not os.path.exists(FILE_PATH):
         return {}
@@ -576,6 +602,8 @@ def list_calendar_events() -> str:
             start_raw = event["start"].get("dateTime", event["start"].get("date"))
 
             dt = parser.parse(start_raw)
+            if dt.tzinfo is not None:
+                dt = dt.astimezone(IST)
             formatted_time = dt.strftime("%d %b %Y, %I:%M %p")
 
             summary = event.get("summary", "No title")
@@ -1022,8 +1050,10 @@ def module_calendar():
                     for i, event in enumerate(events):
                         start_raw = event["start"].get("dateTime", event["start"].get("date"))
                         dt = parser.parse(start_raw)
-                        formatted = dt.strftime("%d %b %Y, %I:%M %p")
-                        st.write(f"{i+1}. {event.get('summary')} → {formatted}")
+                        if dt.tzinfo is not None:
+                            dt = dt.astimezone(IST)
+                        formatted_time = dt.strftime("%d %b %Y, %I:%M %p")
+                        st.write(f"{i+1}. {event.get('summary')} → {formatted_time}")
         
 
     with tab2:
@@ -1072,10 +1102,12 @@ def module_calendar():
             for event in events:
                 start_raw = event["start"].get("dateTime", event["start"].get("date"))
                 dt = parser.parse(start_raw)
-                formatted = dt.strftime("%d %b %Y, %I:%M %p")
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(IST)
+                formatted_time = dt.strftime("%d %b %Y, %I:%M %p")
                 title = event.get("summary", "No title")
 
-                event_options.append(f"{title} → {formatted}")
+                event_options.append(f"{title} → {formatted_time}")
 
             selected_index = st.selectbox(
                 "Select event to update",
@@ -1156,10 +1188,12 @@ def module_calendar():
             for event in events:
                 start_raw = event["start"].get("dateTime", event["start"].get("date"))
                 dt = parser.parse(start_raw)
-                formatted = dt.strftime("%d %b %Y, %I:%M %p")
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(IST)
+                formatted_time = dt.strftime("%d %b %Y, %I:%M %p")
                 title = event.get("summary", "No title")
 
-                event_options.append(f"{title} → {formatted}")
+                event_options.append(f"{title} → {formatted_time}")
 
             selected_index = st.selectbox(
                 "Select event to delete",
@@ -1274,6 +1308,9 @@ def module_gmail_whatsapp():
 def module_scout():
     render_module_header("🔭", "Scout — Daily Briefing")
     render_back_button()
+
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=300000, key="scout_autorefresh")
 
     col1, col2 = st.columns(2)
     # with col1:

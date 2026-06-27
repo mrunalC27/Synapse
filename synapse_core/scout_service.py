@@ -5,7 +5,7 @@ from langchain_groq import ChatGroq
 # import json
 from dotenv import load_dotenv
 from langchain_tavily import TavilySearch
-load_dotenv()
+load_dotenv(override=True)
 
 tavily_api_key = os.getenv("TAVILY_API_KEY")
 groq_api_key = os.getenv("GROQ_API_KEY")
@@ -93,7 +93,12 @@ def run_scout():
             print("Scout parse error:", e)
             briefing_data[section] = []
 
-    with open("daily_briefing.json", "w", encoding="utf-8") as f:
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    DATA_DIR = os.path.join(ROOT_DIR, "data")
+    os.makedirs(DATA_DIR, exist_ok=True)
+    FILE_PATH = os.path.join(DATA_DIR, "daily_briefing.json")
+
+    with open(FILE_PATH, "w", encoding="utf-8") as f:
         json.dump(briefing_data, f, indent=2)
 
     return "Scout briefing generated."

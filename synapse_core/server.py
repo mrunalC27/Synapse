@@ -1,71 +1,92 @@
+import json
+import os
+from datetime import datetime, timezone
+
 from fastapi import FastAPI
 from pydantic import BaseModel
-from datetime import datetime
-import requests
-from apscheduler.schedulers.background import BackgroundScheduler 
-from datetime import datetime 
-import pytz
-# (we will call your Groq model from here later)
-# from synapse_core.scout_service import run_scout
-from scout_service import run_scout
+from langchain_groq import ChatGroq
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
+groq_api_key = os.getenv("GROQ_API_KEY")
 
 app = FastAPI(title="Synapse Gmail Brain")
-scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
 
-def scheduled_scout(): 
-    print("Running scheduled Scout:", datetime.now()) 
-    run_scout()
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(ROOT_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+GMAIL_STORE_PATH = os.path.join(DATA_DIR, "gmail_summaries.json")
 
-scheduler.add_job( 
-    scheduled_scout, 
-    trigger="cron", 
-    hour=7,
-    minute=0
-
-    #for testing every minute, use:
-    # minute="*/1"
+summarizer_llm = ChatGroq(
+    model_name="llama-3.1-8b-instant",
+    temperature=0.3,
+    groq_api_key=groq_api_key,
 )
 
-@app.on_event("startup") 
-def start_scheduler(): 
-    scheduler.start() 
-    print("Scout scheduler started.")
+
+def load_store():
+    if not os.path.exists(GMAIL_STORE_PATH):
+        return []
+    try:
+        with open(GMAIL_STORE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
 
 
-gmail_store = []
+def save_store(store):
+    with open(GMAIL_STORE_PATH, "w", encoding="utf-8") as f:
+        json.dump(store, f, indent=2)
 
 
 class GmailEvent(BaseModel):
+    message_id: str
+    thread_id: str
     subject: str
     sender: str
     body: str
     link: str
 
 
-# TEMP summary function (replace with LLM next step)
-def summarize_email(subject, body):
-    short = body[:300]
-    return f"Summary of '{subject}':\n{short}..."
+def summarize_email(subject: str, sender: str, body: str) -> str:
+    prompt = f"""Summarize this email in 2-3 short sentences. Plain text, no markdown.
+
+Subject: {subject}
+From: {sender}
+Body: {body[:4000]}
+"""
+    try:
+        return summarizer_llm.invoke(prompt).content.strip()
+    except Exception as e:
+        return f"(summary unavailable: {e}) {body[:200]}"
 
 
 @app.post("/gmail")
 def receive_email(data: GmailEvent):
+    store = load_store()
 
-    summary = summarize_email(data.subject, data.body)
+    if any(r["message_id"] == data.message_id for r in store):
+        return {"status": "duplicate_skipped"}
+
+    summary = summarize_email(data.subject, data.sender, data.body)
 
     record = {
+        "message_id": data.message_id,
+        "thread_id": data.thread_id,
         "subject": data.subject,
         "sender": data.sender,
         "summary": summary,
         "link": data.link,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
-    gmail_store.append(record)
+    store.append(record)
+    save_store(store)
 
-    return {"status": "processed"}
+    return {"status": "processed", "summary": summary}
 
 
 @app.get("/gmail")
 def get_emails():
-    return gmail_store[::-1]
+    return load_store()[::-1]

@@ -21,6 +21,7 @@ import shutil
 import dateparser
 import tempfile
 import requests
+from dateutil import parser
 from langchain_groq import ChatGroq
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage, SystemMessage
@@ -52,9 +53,11 @@ tavily_api_key = os.getenv("TAVILY_API_KEY")
 from datetime import datetime, timedelta, timezone
 DB_PERSIST_DIRECTORY = "chroma_db_unified"
 
+#file kuthun run hoat ahe check karaych asel tr
+#print("Running from:", os.getcwd())
 
 # ----------------- PAGE CONFIG ----------------- #
-st.set_page_config(page_title="Synapse AI", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="Synapse Agent", page_icon="🧠", layout="wide")
 
 # ----------------- GLOBAL CSS ----------------- #
 st.markdown("""
@@ -300,7 +303,14 @@ def get_credentials():
         else:
             if not os.path.exists("credentials.json"):
                 raise FileNotFoundError("credentials.json not found.")
+            
             flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            creds = flow.run_local_server(
+                port=0,
+                access_type='offline',   # 🔥 ADD THIS
+                prompt='consent'         # 🔥 ADD THIS
+            )
+
             creds = flow.run_local_server(port=0)
         with open("token.json", "w") as token:
             token.write(creds.to_json())
@@ -539,30 +549,81 @@ def extract_json(text: str):
 
 
 
-
 @tool
 def list_calendar_events() -> str:
     """List the next 10 upcoming events from primary Google Calendar."""
     try:
         creds = get_credentials()
         service = build("calendar", "v3", credentials=creds)
+
         now = datetime.utcnow().isoformat() + "Z"
         events_result = service.events().list(
-            calendarId="primary", timeMin=now, maxResults=10,
-            singleEvents=True, orderBy="startTime"
+            calendarId="primary",
+            timeMin=now,
+            maxResults=10,
+            singleEvents=True,
+            orderBy="startTime"
         ).execute()
+
         events = events_result.get("items", [])
+
         if not events:
             return "No upcoming events found."
+
         event_list = []
-        for event in events:
-            start = event["start"].get("dateTime", event["start"].get("date"))
+
+        for i, event in enumerate(events):
+            start_raw = event["start"].get("dateTime", event["start"].get("date"))
+
+            dt = parser.parse(start_raw)
+            formatted_time = dt.strftime("%d %b %Y, %I:%M %p")
+
             summary = event.get("summary", "No title")
-            eid = event.get("id")
-            event_list.append(f"- {start}: {summary} (ID: {eid})")
+
+            event_list.append(f"{i+1}. {summary} → {formatted_time}")
+
         return "Upcoming Calendar Events:\n" + "\n".join(event_list)
+
     except Exception as e:
         return f"Calendar Error: {e}"
+# @tool
+# def list_calendar_events() -> str:
+#     """List the next 10 upcoming events from primary Google Calendar."""
+#     try:
+#         creds = get_credentials()
+#         service = build("calendar", "v3", credentials=creds)
+#         now = datetime.utcnow().isoformat() + "Z"
+#         events_result = service.events().list(
+#             calendarId="primary", timeMin=now, maxResults=10,
+#             singleEvents=True, orderBy="startTime"
+#         ).execute()
+#         events = events_result.get("items", [])
+#         if not events:
+#             return "No upcoming events found."
+#         event_list = []
+#         for event in events:
+#             start = event["start"].get("dateTime", event["start"].get("date"))
+#             summary = event.get("summary", "No title")
+#             eid = event.get("id")
+#             # event_list.append(f"- {start}: {summary} (ID: {eid})")
+
+            
+
+#             event_list = []
+#             for i, event in enumerate(events):
+#                 start_raw = event["start"].get("dateTime", event["start"].get("date"))
+                
+#                 dt = parser.parse(start_raw)
+#                 formatted_time = dt.strftime("%d %b %Y, %I:%M %p")  # 🔥 readable format
+
+#                 summary = event.get("summary", "No title")
+#                 eid = event.get("id")
+
+#                 event_list.append(f"{i+1}. {summary} → {formatted_time}")
+                
+#         return "Upcoming Calendar Events:\n" + "\n".join(event_list)
+#     except Exception as e:
+#         return f"Calendar Error: {e}"
 
 @tool
 def add_calendar_event(summary: str, start_time: str = None, end_time: str = None, description: str = "") -> str:
@@ -712,7 +773,7 @@ def delete_calendar_event(summary: str, event_date_nl: str) -> str:
         return f"Event '{summary}' on {date_str} deleted."
     except Exception as e:
         return f"Error deleting event: {e}"
-
+    
 @tool
 def undo_last_action() -> str:
     """Undo the last calendar action (add or delete)."""
@@ -939,13 +1000,31 @@ def module_calendar():
     with tab1:
         if st.button("Fetch Upcoming Events"):
             with st.spinner("Loading calendar..."):
-                result = list_calendar_events.invoke({})
-                st.text(result)
-        if "last_deleted_or_added" in st.session_state and st.session_state.last_deleted_or_added:
-            if st.button("↩️ Undo Last Action"):
-                result = undo_last_action.invoke({})
-                st.info(result)
-  
+                creds = get_credentials()
+                service = build("calendar", "v3", credentials=creds)
+
+                now = datetime.utcnow().isoformat() + "Z"
+                events_result = service.events().list(
+                    calendarId="primary",
+                    timeMin=now,
+                    maxResults=10,
+                    singleEvents=True,
+                    orderBy="startTime"
+                ).execute()
+
+                events = events_result.get("items", [])
+                st.session_state.events = events  # ✅ STORE HERE
+
+                # display nicely
+                if not events:
+                    st.info("No upcoming events")
+                else:
+                    for i, event in enumerate(events):
+                        start_raw = event["start"].get("dateTime", event["start"].get("date"))
+                        dt = parser.parse(start_raw)
+                        formatted = dt.strftime("%d %b %Y, %I:%M %p")
+                        st.write(f"{i+1}. {event.get('summary')} → {formatted}")
+        
 
     with tab2:
         summary = st.text_input("Event title", placeholder="e.g. Team standup",)
@@ -969,26 +1048,157 @@ def module_calendar():
                 st.success(result)
   
 
+    # with tab3:
+    #     summary_u = st.text_input("Event title to update", placeholder="e.g. Team standup")
+    #     new_time = st.text_input("New time", placeholder="e.g. next Monday 5pm")
+    #     old_time = st.text_input("Current time (optional)", placeholder="e.g. tomorrow 3pm")
+    #     if st.button("Update Event", key="update_cal"):
+    #         with st.spinner("Updating event..."):
+    #             result = update_calendar_event_by_natural_language.invoke({
+    #                 "summary": summary_u, "new_time_nl": new_time, "old_time_nl": old_time
+    #             })
+    #             st.success(result)
+
     with tab3:
-        summary_u = st.text_input("Event title to update", placeholder="e.g. Team standup")
-        new_time = st.text_input("New time", placeholder="e.g. next Monday 5pm")
-        old_time = st.text_input("Current time (optional)", placeholder="e.g. tomorrow 3pm")
-        if st.button("Update Event", key="update_cal"):
-            with st.spinner("Updating event..."):
-                result = update_calendar_event_by_natural_language.invoke({
-                    "summary": summary_u, "new_time_nl": new_time, "old_time_nl": old_time
-                })
-                st.success(result)
+        # st.subheader("Update Event")
+
+        events = st.session_state.get("events", [])
+
+        if not events:
+            st.warning("⚠️ First fetch events from 'View Events' tab")
+        else:
+            # Create dropdown options
+            event_options = []
+            for event in events:
+                start_raw = event["start"].get("dateTime", event["start"].get("date"))
+                dt = parser.parse(start_raw)
+                formatted = dt.strftime("%d %b %Y, %I:%M %p")
+                title = event.get("summary", "No title")
+
+                event_options.append(f"{title} → {formatted}")
+
+            selected_index = st.selectbox(
+                "Select event to update",
+                range(len(event_options)),
+                format_func=lambda x: event_options[x]
+            )
+
+            new_time = st.text_input(
+                "New time",
+                placeholder="e.g. tomorrow 5pm"
+            )
+
+            if st.button("Update Event", key="update_cal"):
+                if not new_time.strip():
+                    st.error("Please enter new time")
+                else:
+                    try:
+                        creds = get_credentials()
+                        service = build("calendar", "v3", credentials=creds)
+
+                        selected_event = events[selected_index]
+                        event_id = selected_event["id"]
+
+                        tz = timezone(timedelta(hours=5, minutes=30))
+                        base = datetime.now(tz)
+
+                        new_start = dateparser.parse(
+                            new_time,
+                            settings={
+                                "RELATIVE_BASE": base,
+                                "PREFER_DATES_FROM": "future",
+                                "RETURN_AS_TIMEZONE_AWARE": True,
+                                "TIMEZONE": "Asia/Kolkata"
+                            },
+                            languages=["en"]
+                        )
+
+                        if not new_start:
+                            st.error("Could not understand the new time.")
+                        else:
+                            new_end = new_start + timedelta(hours=1)
+
+                            selected_event["start"]["dateTime"] = new_start.isoformat()
+                            selected_event["end"]["dateTime"] = new_end.isoformat()
+
+                            updated = service.events().update(
+                                calendarId="primary",
+                                eventId=event_id,
+                                body=selected_event
+                            ).execute()
+
+                            st.success(f"✅ Event updated: {updated.get('summary')}")
+
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+
+
+    # with tab4:
+    #     summary_d = st.text_input("Event title to delete", placeholder="e.g. Team standup")
+    #     date_nl = st.text_input("Event date", placeholder="e.g. tomorrow")
+    #     if st.button("Delete Event", key="delete_cal"):
+    #         with st.spinner("Deleting..."):
+    #             result = delete_calendar_event.invoke({
+    #                 "summary": summary_d, "event_date_nl": date_nl
+    #             })
+    #             st.warning(result)
+
 
     with tab4:
-        summary_d = st.text_input("Event title to delete", placeholder="e.g. Team standup")
-        date_nl = st.text_input("Event date", placeholder="e.g. tomorrow")
-        if st.button("Delete Event", key="delete_cal"):
-            with st.spinner("Deleting..."):
-                result = delete_calendar_event.invoke({
-                    "summary": summary_d, "event_date_nl": date_nl
-                })
-                st.warning(result)
+        st.subheader("Delete Event")
+
+        events = st.session_state.get("events", [])
+
+        if not events:
+            st.warning("⚠️ First fetch events from 'View Events' tab")
+        else:
+            event_options = []
+            for event in events:
+                start_raw = event["start"].get("dateTime", event["start"].get("date"))
+                dt = parser.parse(start_raw)
+                formatted = dt.strftime("%d %b %Y, %I:%M %p")
+                title = event.get("summary", "No title")
+
+                event_options.append(f"{title} → {formatted}")
+
+            selected_index = st.selectbox(
+                "Select event to delete",
+                range(len(event_options)),
+                format_func=lambda x: event_options[x],
+                key="delete_select"
+            )
+
+            if st.button("Delete Event", key="delete_cal"):
+                try:
+                    creds = get_credentials()
+                    service = build("calendar", "v3", credentials=creds)
+
+                    selected_event = events[selected_index]
+                    event_id = selected_event["id"]
+
+                    # ✅ Store for undo
+                    st.session_state.last_deleted_or_added = {
+                        "action": "delete",
+                        "event": selected_event
+                    }
+
+                    service.events().delete(
+                        calendarId="primary",
+                        eventId=event_id
+                    ).execute()
+
+                    st.success(f"🗑️ Event deleted: {selected_event.get('summary')}")
+
+                    st.session_state.events.pop(selected_index)
+
+                except Exception as e:
+                    st.error(f"Error deleting event: {e}")
+
+        # ✅ Undo button (IMPORTANT)
+        if "last_deleted_or_added" in st.session_state and st.session_state.last_deleted_or_added:
+            if st.button("↩️ Undo Last Delete"):
+                result = undo_last_action.invoke({})
+                st.info(result)
 
 # def module_gmail_whatsapp():
 #     render_module_header("📨", "Gmail & WhatsApp")
@@ -1004,7 +1214,7 @@ def module_calendar():
 
 
 def module_gmail_whatsapp():
-    render_module_header("📨", "Gmail & WhatsApp")
+    render_module_header("📨", "Gmail Automation")
     render_back_button()
     
     st.info("📬 Gmail summaries will appear below as they arrive:")

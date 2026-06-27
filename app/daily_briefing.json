@@ -1,0 +1,40 @@
+{
+  "AI & Tech News": [
+    {
+      "title": "Error 401: Unauthorized",
+      "summary": "Missing or invalid API key.",
+      "link": "https://api.example.com/docs/error-401"
+    }
+  ],
+  "Hackathons": [
+    {
+      "title": "Error 401: Unauthorized",
+      "summary": "Missing or invalid API key",
+      "link": "https://docs.python.org/3/library/http.client.html#http-client-ref"
+    }
+  ],
+  "Scholarships": [
+    {
+      "title": "Error 401: Unauthorized",
+      "summary": "The API key is missing or invalid, resulting in a 401 unauthorized error.",
+      "link": "https://en.wikipedia.org/wiki/List_of_HTTP_status_codes#4xx_Client_errors"
+    },
+    {
+      "title": "API Key",
+      "summary": "A unique string required for authentication to an API.",
+      "link": "https://en.wikipedia.org/wiki/Application_programming_interface#Authentication"
+    },
+    {
+      "title": "HTTP Status Codes",
+      "summary": "Standardized codes to communicate the outcome of a web request.",
+      "link": "https://en.wikipedia.org/wiki/List_of_HTTP_status_codes"
+    }
+  ],
+  "Tools & Releases": [
+    {
+      "title": "401 Unauthorized Error",
+      "summary": "The API key is missing or invalid, resulting in a 401 Unauthorized error.",
+      "link": "https://httpstatuses.com/401"
+    }
+  ]
+}

@@ -6,8 +6,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime 
 import pytz
 # (we will call your Groq model from here later)
-from synapse_core.scout_service import run_scout
-
+# from synapse_core.scout_service import run_scout
+from scout_service import run_scout
 
 app = FastAPI(title="Synapse Gmail Brain")
 scheduler = BackgroundScheduler(timezone="Asia/Kolkata")

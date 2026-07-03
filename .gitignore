@@ -1,5 +1,7 @@
-# Environment variables
+# Environment & secrets
 .env
+credentials.json
+token.json
 
 # Virtual environment
 venv/
@@ -8,10 +10,15 @@ venv/
 __pycache__/
 *.pyc
 
+# Runtime data (regenerated at runtime, not source code)
+data/daily_briefing.json
+data/gmail_summaries.json
+tasks.txt
+chroma_db/
+
+# Test artifacts
+test_email.json
+
 # OS files
 .DS_Store
 Thumbs.db
-credentials.json
-token.json
-chroma_db/
-n8n_gmail_para.txt

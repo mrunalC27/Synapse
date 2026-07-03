@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
@@ -49,18 +50,54 @@ class GmailEvent(BaseModel):
     link: str
 
 
-def summarize_email(subject: str, sender: str, body: str) -> str:
+def summarize_email(subject: str, sender: str, body: str, max_retries: int = 3):
+    """Returns the summary text, or None if every retry attempt failed
+    (e.g. persistent rate limiting). Callers must check for None and must
+    never write None/error text into a real draft."""
     prompt = f"""Summarize this email in 2-3 short sentences. Plain text, no markdown.
 
 Subject: {subject}
 From: {sender}
 Body: {body[:4000]}
 """
-    try:
-        return summarizer_llm.invoke(prompt).content.strip()
-    except Exception as e:
-        return f"(summary unavailable: {e}) {body[:200]}"
+    delay = 2
+    for attempt in range(max_retries):
+        try:
+            return summarizer_llm.invoke(prompt).content.strip()
+        except Exception as e:
+            is_rate_limit = "rate_limit" in str(e).lower() or "429" in str(e)
+            if is_rate_limit and attempt < max_retries - 1:
+                print(f"[Gmail] rate limited, retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
+                time.sleep(delay)
+                delay *= 2
+                continue
+            print(f"[Gmail] summarization failed permanently: {e}")
+            return None
+    return None
 
+def draft_reply(subject: str, sender: str, body: str, max_retries: int = 3):
+    prompt = f"""Write a short, professional draft reply to this email in 2-3 sentences.
+Be polite and address the sender's main point. Plain text only, no markdown, no subject line.
+Do not include any preamble like 'Here is a draft reply' - just write the reply itself.
+
+Subject: {subject}
+From: {sender}
+Body: {body[:4000]}
+"""
+    delay = 2
+    for attempt in range(max_retries):
+        try:
+            return summarizer_llm.invoke(prompt).content.strip()
+        except Exception as e:
+            is_rate_limit = "rate_limit" in str(e).lower() or "429" in str(e)
+            if is_rate_limit and attempt < max_retries - 1:
+                print(f"[Gmail] rate limited on draft_reply, retrying in {delay}s")
+                time.sleep(delay)
+                delay *= 2
+                continue
+            print(f"[Gmail] draft_reply failed permanently: {e}")
+            return None
+    return None
 
 @app.post("/gmail")
 def receive_email(data: GmailEvent):
@@ -70,6 +107,13 @@ def receive_email(data: GmailEvent):
         return {"status": "duplicate_skipped"}
 
     summary = summarize_email(data.subject, data.sender, data.body)
+
+    if summary is None:
+        return {"status": "failed", "reason": "summarization_unavailable"}
+
+    draft = draft_reply(data.subject, data.sender, data.body)
+    # draft can be None if rate limited — n8n's IF node will catch this
+    # and skip draft creation, so we still store the summary card regardless.
 
     record = {
         "message_id": data.message_id,
@@ -84,7 +128,13 @@ def receive_email(data: GmailEvent):
     store.append(record)
     save_store(store)
 
-    return {"status": "processed", "summary": summary}
+    draft = draft_reply(data.subject, data.sender, data.body)
+
+    return {
+        "status": "processed",
+        "summary": summary,
+        "draft": draft,
+    }
 
 
 @app.get("/gmail")

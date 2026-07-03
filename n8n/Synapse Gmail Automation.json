@@ -1,0 +1,251 @@
+{
+  "name": "Synapse Gmail Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "q": "is:unread"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -32,
+        16
+      ],
+      "id": "a4158372-af39-45c6-8394-a82a715c22d4",
+      "name": "Get many messages",
+      "webhookId": "667809ff-a972-41a1-938a-5dc9860bfa37",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "90L83knqhr8SsscR",
+          "name": "Gmail account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        16
+      ],
+      "id": "77c1debf-6447-4c17-82a8-5c406d7a0325",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:9000/gmail",
+        "provideSslCertificates": "={{ false }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=message_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "=thread_id",
+              "value": "={{ $json.threadId }}"
+            },
+            {
+              "name": "=subject",
+              "value": "={{ $json.Subject }}"
+            },
+            {
+              "name": "=sender",
+              "value": "={{ $json.From }}"
+            },
+            {
+              "name": "=body",
+              "value": "={{ $json.snippet }}"
+            },
+            {
+              "name": "=link",
+              "value": "=https://mail.google.com/mail/u/0/#all/{{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        288,
+        16
+      ],
+      "id": "d8a7b485-e36f-431a-8f50-913245bece40",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $('Get many messages').item.json.Subject }}",
+        "message": "={{ $json.draft }}",
+        "options": {
+          "threadId": "={{ $('Get many messages').item.json.threadId }}",
+          "sendTo": "={{ $('Get many messages').item.json.From }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        -16
+      ],
+      "id": "acdcbad2-601a-4fa2-a11a-49a6880d0720",
+      "name": "Create a draft",
+      "webhookId": "55c97d6b-7e17-40a5-a4e0-e5f62c96ce29",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "90L83knqhr8SsscR",
+          "name": "Gmail account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a7aeaa0a-4808-4b22-9a6a-64fa0ce1c24f",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "processed",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "953790fe-221b-4e5b-9558-7075dde7afa2",
+              "leftValue": "={{ $json.draft }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        496,
+        16
+      ],
+      "id": "f65744a3-48f5-493e-b578-b11b42da5639",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        128,
+        -96
+      ],
+      "id": "5e7b1d47-6648-4827-850d-676d93b5002e",
+      "name": "Wait",
+      "webhookId": "b8f4c74f-bc86-4fe1-9186-56394f87cfaa"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "cc85c2fc-e5b0-458a-aa47-68424a926ae5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2a6f67a86fea768f498823ea2327f09308e23840ad5a1e47aa1646d426a10202"
+  },
+  "id": "LJg18frWsclVbCDb",
+  "tags": []
+}

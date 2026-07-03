@@ -121,7 +121,17 @@ Schedule Trigger (every 10 min)
 ```
  
 Activate the workflow — it will run automatically every 10 minutes while n8n is running.
- 
+
+### Import the workflow directly
+
+Instead of building the workflow manually, import the pre-built workflow:
+
+1. In n8n, click **"Add workflow"** → **"Import from file"**
+2. Select `n8n/gmail_workflow.json` from this repo
+3. Open the workflow, click the **Gmail** credential fields and reconnect your own Gmail account (credentials are not exported with the workflow for security reasons)
+4. Update the **HTTP Request** node URL if needed (`http://127.0.0.1:9000/gmail`)
+5. Activate the workflow
+
 ### 5. Run everything
  
 Open three terminal windows (all with venv activated):
